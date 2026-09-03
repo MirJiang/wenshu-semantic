@@ -1,0 +1,55 @@
+version: 1
+datasources:
+  - mall_mysql
+tables:
+  - table: orders
+    business: 订单主表：电商核心事实表，记录每笔下单；状态流转 PAID→SHIPPED→DONE，REFUND 为退款。来源：seed.py / models/order.py
+    source: agent
+    confidence: high
+    fields:
+      - name: id
+        business: 订单号，主键。来源：DDL
+      - name: user_id
+        business: 下单用户 id，关联 users.id。来源：models/order.py:15
+      - name: status
+        business: 订单状态字典：PAID 已支付 / SHIPPED 已发货 / DONE 已完成 / REFUND 退款中。来源：STATUSES 常量
+      - name: region
+        business: 收货地区，七大区：华东/华南/华北/西南/华中/东北/西北。来源：REGIONS 常量
+      - name: channel
+        business: 下单渠道：APP/小程序/门店/H5。来源：CHANNELS 常量
+      - name: paid
+        business: 实付金额（元），GMV 口径用 order_items.amount 合计，不用本字段。来源：metrics.yml gmv
+      - name: created_at
+        business: 下单时间，指标时间字段。来源：DDL
+  - table: order_items
+    business: 订单商品明细：一单多行；GMV 的金额来源表。来源：metrics.yml gmv.formula
+    source: agent
+    confidence: high
+    fields:
+      - name: amount
+        business: 行金额（元），GMV=SUM(amount)。来源：metrics.yml
+      - name: category
+        business: 一级品类：美妆个护/数码家电/服饰鞋包/食品生鲜/家居日用/母婴玩具/运动户外。来源：CATS 常量
+  - table: users
+    business: 用户维表：昵称与手机号属个人信息，查询需脱敏。来源：rules mask_phone
+    source: agent
+    confidence: high
+    fields:
+      - name: nick
+        business: 昵称，脱敏 keep_first_1。来源：rules mask_nick
+      - name: phone
+        business: 手机号，脱敏 keep_last_4。来源：rules mask_phone
+terms:
+  - term: 单量
+    maps_to: pay_orders
+    source: 代码推断
+  - term: 客单价
+    maps_to: aov
+    source: 代码推断
+metrics:
+  - metric: aov
+    display_name: 客单价
+    formula: "GMV / 支付订单数"
+    notes: 由 GMV 与单量派生，代码推断草稿，待业务确认。来源：report/sales.py:31
+    source: agent
+    confidence: medium
