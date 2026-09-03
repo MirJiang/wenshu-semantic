@@ -20,7 +20,8 @@ description: 在业务代码仓库中为「问数」智能 BI 生成业务说明
 4. **候选术语**：领域名词 → 指标/表的映射。只写代码能证实的（如报表字段名、页面文案），标 `source: 代码推断`、`confidence: medium`。
 5. **候选指标**：从聚合逻辑（SUM/COUNT 查询、报表服务、BI 配置）反推指标草稿，含 display_name/formula/notes，一律 `confidence: medium|low`。**禁止编造口径**；拿不准的写进 notes 并标 low。
 6. **产出文件**：`wenshu-knowledge/knowledge.yaml`，结构见下。可附 `wenshu-knowledge/docs/*.md` 人读文档（可选）。
-7. **交付说明**：向用户汇报：覆盖了几张表、几条字段说明、几条候选术语/指标；列出低置信度项请人确认；告知导入方式（问数 → 数据源 → 业务知识 → 导入/导出 → 预览 diff → 确认导入；指标默认草稿，管理员启用后生效）。
+7. **生成评测用例**（golden）：基于已挖出的指标/表，产出 10–20 条 `cases`：自然语言问题 + 期望（expect_intent / must_tables / must_contain）。问题用业务口语（含别名），期望必须与 formula/tables 一致；危险类用例（danger）不要写——系统自带。
+8. **交付说明**：向用户汇报：覆盖了几张表、几条字段说明、几条候选术语/指标/用例；列出低置信度项请人确认；告知导入方式（问数 → 数据源 → 业务知识 → 导入/导出 → 预览 diff → 确认导入；指标与用例默认草稿，管理员启用后生效，用例进入 `wenshu eval`）。
 
 ## knowledge.yaml schema（version 1）
 
@@ -49,6 +50,19 @@ metrics:                # 候选指标，导入后为草稿
     notes: 代码推断草稿，待业务确认。来源：report/refund.py:44
     source: agent
     confidence: medium
+cases:                  # 评测用例（positive），导入后为草稿，启用后进入 wenshu eval
+  - case: gmv_last_30d
+    kind: positive
+    question: 近30天GMV是多少
+    expect_intent: kpi
+    must_tables: [orders, order_items]
+    must_contain: ["status IN"]
+  - case: sales_by_region
+    kind: positive
+    question: 近30天各地区销售额对比
+    expect_intent: region
+    must_tables: [orders]
+    must_contain: ["region"]
 ```
 
 ## 硬规则
